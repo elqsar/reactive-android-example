@@ -36,6 +36,7 @@ android {
 }
 
 dependencies {
+    compile 'com.squareup.retrofit:retrofit:1.4.1'
     compile 'com.netflix.rxjava:rxjava-core:+'
     compile 'com.netflix.rxjava:rxjava-android:+'
     compile 'com.netflix.rxjava:rxjava-async-util:+'

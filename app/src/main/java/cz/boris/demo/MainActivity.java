@@ -1,6 +1,7 @@
 package cz.boris.demo;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
@@ -9,6 +10,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.util.concurrent.TimeUnit;
 
@@ -22,11 +24,20 @@ public class MainActivity extends Activity {
     ImageView imageView;
     Observable<Bitmap> imageObservable;
     ProgressBar progressBar;
+    TextView next;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        next = (TextView) findViewById(R.id.hello);
+        next.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, NetworkActivity.class);
+                startActivity(intent);
+            }
+        });
         imageObservable = Async.start(() -> longOperation(), Schedulers.io()).cache().observeOn(AndroidSchedulers.mainThread());
     }
 
