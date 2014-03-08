@@ -91,6 +91,6 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     }
 
     private boolean isSubscribed() {
-        return userSubscription != null && userSubscription.isUnsubscribed();
+        return userSubscription != null && !userSubscription.isUnsubscribed();
     }
 }
