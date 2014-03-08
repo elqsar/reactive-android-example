@@ -68,7 +68,7 @@ public class GitService {
                 subscriber.onNext(BitmapFactory.decodeStream(avatarUrl.openStream()));
                 subscriber.onCompleted();
             } catch (Exception e) {
-
+                subscriber.onError(e);
             }
         }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
     }

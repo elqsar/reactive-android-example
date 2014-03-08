@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import cz.boris.demo.R;
 import cz.boris.demo.model.Repo;
@@ -67,12 +68,17 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
             case R.id.done:
                 if (!TextUtils.isEmpty(search.getText().toString())) {
                     user = GitService.user(search.getText().toString()).cache();
+                    user.doOnError(error -> processError(error));
                     userSubscription = user.subscribe(result -> processUser(result));
                     user.flatMap(result -> GitService.repos(result.login)).subscribe(result -> processRepos(result));
                     user.flatMap(result -> GitService.bitmapImage(result.avatar_url)).subscribe(result -> processImage(result));
                 }
                 break;
         }
+    }
+
+    private void processError(Throwable error) {
+        Toast.makeText(getActivity(), "Something wrong...", Toast.LENGTH_LONG).show();
     }
 
     private void processUser(User result) {
