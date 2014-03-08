@@ -31,7 +31,6 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     private ListView repoList;
     private Button done;
     private EditText search;
-    private TextView title;
 
     public static NetworkFragment newInstance() {
         return new NetworkFragment();
@@ -85,10 +84,6 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
 
     private void processRepos(Repo[] result) {
         ArrayAdapter<Repo> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, result);
-        title = new TextView(getActivity());
-        title.setPadding(8,8,8,8);
-        title.setText("User repositories:");
-        repoList.addHeaderView(title);
         repoList.setAdapter(adapter);
     }
 }
