@@ -15,5 +15,6 @@ public class NetworkActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.fragment_container);
         getFragmentManager().beginTransaction().add(R.id.fragment_container, NetworkFragment.newInstance()).commit();
+
     }
 }

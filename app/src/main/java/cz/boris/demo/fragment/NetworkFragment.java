@@ -14,20 +14,12 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-
 import cz.boris.demo.R;
 import cz.boris.demo.model.Repo;
 import cz.boris.demo.model.User;
 import cz.boris.demo.network.GitService;
 import rx.Observable;
-import rx.Subscriber;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
-import rx.functions.Func1;
-import rx.schedulers.Schedulers;
+import rx.Subscription;
 
 /**
  * Created by Boris Musatov on 6.3.14.
@@ -35,11 +27,11 @@ import rx.schedulers.Schedulers;
 public class NetworkFragment extends Fragment implements View.OnClickListener {
 
     private Observable<User> user;
-    private Observable<Repo[]> repos;
-    private Observable<Bitmap> photo;
+    private Subscription userSubscription;
     private ListView repoList;
     private Button done;
     private EditText search;
+    private TextView title;
 
     public static NetworkFragment newInstance() {
         return new NetworkFragment();
@@ -50,15 +42,6 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
         View root = inflater.inflate(R.layout.network_fragment, container, false);
         done = (Button) root.findViewById(R.id.done);
         search = (EditText) root.findViewById(R.id.search);
-        user = Observable.create((Subscriber<? super User> subscriber) -> {
-            try {
-                User result = GitService.user(search.getText().toString());
-                subscriber.onNext(result);
-                subscriber.onCompleted();
-            } catch (Exception e) {
-                subscriber.onError(e);
-            }
-        }).subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread());
         done.setOnClickListener(this);
         return root;
     }
@@ -72,6 +55,9 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
+        if(userSubscription != null && userSubscription.isUnsubscribed()) {
+            userSubscription.unsubscribe();
+        }
     }
 
     @Override
@@ -79,59 +65,30 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
         switch (v.getId()) {
             case R.id.done:
                 if (!TextUtils.isEmpty(search.getText().toString())) {
-                    user.subscribe(result -> {
-                        if (result != null) {
-                            ((TextView) getView().findViewById(R.id.name)).setText(result.name);
-                            ((TextView) getView().findViewById(R.id.email)).setText(result.email);
-                            ((TextView) getView().findViewById(R.id.company)).setText(result.company);
-                        }
+                    user = GitService.user(search.getText().toString()).cache();
+                    userSubscription = user.subscribe(result -> {
+                        ((TextView)getView().findViewById(R.id.name)).setText(result.name);
+                        ((TextView)getView().findViewById(R.id.company)).setText(result.company);
+                        ((TextView)getView().findViewById(R.id.email)).setText(result.email);
                     });
-                    repos = user.map(userResult -> {
-                        if (userResult != null) {
-                            ExecutorService es = Executors.newCachedThreadPool();
-                            Future<Repo[]> data = es.submit(() -> GitService.repos(userResult.login));
-                            es.shutdown();
-                            try {
-                                return data.get();
-                            } catch (Exception e) {
-                            }
-                        }
-                        return null;
-                    }).observeOn(AndroidSchedulers.mainThread());
-                    repos.subscribe(new Action1<Repo[]>() {
-                        @Override
-                        public void call(Repo[] repos) {
-                            if (repos != null) {
-                                ArrayAdapter<Repo> repoArrayAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_expandable_list_item_1, repos);
-                                repoList.setAdapter(repoArrayAdapter);
-                            }
-                        }
-                    });
-                    photo = user.map(new Func1<User, Bitmap>() {
-                        @Override
-                        public Bitmap call(User user) {
-                            if (user != null) {
-                                ExecutorService es = Executors.newCachedThreadPool();
-                                Future<Bitmap> result = es.submit(() -> GitService.bitmapImage(user.avatar_url));
-                                es.shutdown();
-                                try {
-                                    return result.get();
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
-                            }
-                            return null;
-                        }
-                    }).observeOn(AndroidSchedulers.mainThread());
-                    photo.subscribe(new Action1<Bitmap>() {
-                        @Override
-                        public void call(Bitmap bitmap) {
-                            if (bitmap != null)
-                                ((ImageView) getView().findViewById(R.id.avatar)).setImageBitmap(bitmap);
-                        }
-                    });
+                    user.flatMap(result -> GitService.repos(result.login)).subscribe(result -> processRepos(result));
+                    user.flatMap(result -> GitService.bitmapImage(result.avatar_url)).subscribe(result -> processImage(result));
+
                 }
                 break;
         }
+    }
+
+    private void processImage(Bitmap result) {
+        ((ImageView)getView().findViewById(R.id.avatar)).setImageBitmap(result);
+    }
+
+    private void processRepos(Repo[] result) {
+        ArrayAdapter<Repo> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, result);
+        title = new TextView(getActivity());
+        title.setPadding(8,8,8,8);
+        title.setText("User repositories:");
+        repoList.addHeaderView(title);
+        repoList.setAdapter(adapter);
     }
 }

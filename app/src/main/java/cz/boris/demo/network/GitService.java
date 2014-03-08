@@ -2,6 +2,7 @@ package cz.boris.demo.network;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.util.Log;
 
 import java.net.URL;
 
@@ -10,6 +11,10 @@ import cz.boris.demo.model.User;
 import retrofit.RestAdapter;
 import retrofit.http.GET;
 import retrofit.http.Path;
+import rx.Observable;
+import rx.Subscriber;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 /**
  * Created by Boris Musatov on 6.3.14.
@@ -30,23 +35,45 @@ public class GitService {
         userService = restAdapter.create(UserService.class);
     }
 
-    public static User user(String name) {
-        User user = userService.getUser(name);
-        return user;
+    public static Observable<User> user(String name) {
+        Log.d("User service called: ", "user()");
+        return Observable.create((Subscriber<? super User> subscriber) -> {
+            try {
+                User user = userService.getUser(name);
+                subscriber.onNext(user);
+                subscriber.onCompleted();
+                // handle error here
+            } catch (Exception e) {
+                subscriber.onError(e);
+                e.printStackTrace();
+            }
+        }).subscribeOn(Schedulers.newThread()).observeOn(AndroidSchedulers.mainThread());
     }
 
-    public static Repo[] repos(String user) {
-        return userService.getRepos(user);
+    public static Observable<Repo[]> repos(String user) {
+        Log.d("User service called: ", "repos()");
+        return Observable.create((Subscriber<? super Repo[]> subscriber) -> {
+            Repo[] repos = userService.getRepos(user);
+            subscriber.onNext(repos);
+            subscriber.onCompleted();
+            // handle error here
+        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
     }
 
-    public static Bitmap bitmapImage(String url) {
-        Bitmap bitmap = null;
-        try {
-            URL avatar = new URL(url);
-            bitmap = BitmapFactory.decodeStream(avatar.openStream());
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return bitmap;
+    public static Observable<Bitmap> bitmapImage(String url) {
+        Log.d("User service called: ", "bitmapImage()");
+        return Observable.create((Subscriber<? super Bitmap> subscriber) -> {
+            try {
+                URL avatarUrl = new URL(url);
+                subscriber.onNext(BitmapFactory.decodeStream(avatarUrl.openStream()));
+                subscriber.onCompleted();
+            } catch (Exception e) {
+
+            }
+        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
+    }
+
+    public static Repo[] dummy() {
+        return new Repo[0];
     }
 }

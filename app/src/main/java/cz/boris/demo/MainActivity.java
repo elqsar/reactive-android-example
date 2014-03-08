@@ -15,9 +15,9 @@ import android.widget.TextView;
 import java.util.concurrent.TimeUnit;
 
 import rx.Observable;
+import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.schedulers.Schedulers;
-import rx.util.async.Async;
 
 public class MainActivity extends Activity {
 
@@ -31,14 +31,13 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         next = (TextView) findViewById(R.id.hello);
-        next.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(MainActivity.this, NetworkActivity.class);
-                startActivity(intent);
-            }
+        next.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, NetworkActivity.class);
+            startActivity(intent);
         });
-        imageObservable = Async.start(() -> longOperation(), Schedulers.io()).cache().observeOn(AndroidSchedulers.mainThread());
+        imageObservable = longOperation();
+        // another solution is less verbose but it is little tricky to understand what going on
+        //imageObservable = Async.start(() -> longOperation(), Schedulers.io()).cache().observeOn(AndroidSchedulers.mainThread());
     }
 
     @Override
@@ -46,8 +45,10 @@ public class MainActivity extends Activity {
         super.onResume();
         imageView = (ImageView) findViewById(R.id.imageView);
         progressBar = (ProgressBar) findViewById(R.id.progress);
-        imageObservable.subscribe(image -> imageView.setImageBitmap(image));
-        imageObservable.first().subscribe(any -> progressBar.setVisibility(View.GONE));
+        imageObservable.subscribe(bitmap -> {
+            progressBar.setVisibility(View.GONE);
+            imageView.setImageBitmap(bitmap);
+        });
     }
 
     @Override
@@ -56,18 +57,17 @@ public class MainActivity extends Activity {
         imageObservable = null;
     }
 
-    private Bitmap longOperation() {
-        Bitmap bitmap = null;
-        try {
-            // simulate long blocking operation here
-            TimeUnit.SECONDS.sleep(5);
-            bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
-        } catch (Exception e) {
-
-        } finally {
-
-        }
-        return bitmap;
+    private Observable<Bitmap> longOperation() {
+        return Observable.create((Subscriber<? super Bitmap> subscriber) -> {
+            try {
+                TimeUnit.SECONDS.sleep(10);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);
+            subscriber.onNext(bitmap);
+            subscriber.onCompleted();
+        }).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
     }
 
 
