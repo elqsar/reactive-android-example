@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
     private Observable<Bitmap> longOperation() {
         return Observable.create((Subscriber<? super Bitmap> subscriber) -> {
             try {
+                // simulate long blocking operation
                 TimeUnit.SECONDS.sleep(10);
             } catch (InterruptedException e) {
                 e.printStackTrace();

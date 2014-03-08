@@ -39,10 +39,14 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.network_fragment, container, false);
+        setupUI(root);
+        return root;
+    }
+
+    private void setupUI(View root) {
         done = (Button) root.findViewById(R.id.done);
         search = (EditText) root.findViewById(R.id.search);
         done.setOnClickListener(this);
-        return root;
     }
 
     @Override
@@ -54,9 +58,7 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        if(userSubscription != null && userSubscription.isUnsubscribed()) {
-            userSubscription.unsubscribe();
-        }
+        if(isSubscribed()) userSubscription.unsubscribe();
     }
 
     @Override
@@ -65,17 +67,18 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
             case R.id.done:
                 if (!TextUtils.isEmpty(search.getText().toString())) {
                     user = GitService.user(search.getText().toString()).cache();
-                    userSubscription = user.subscribe(result -> {
-                        ((TextView)getView().findViewById(R.id.name)).setText(result.name);
-                        ((TextView)getView().findViewById(R.id.company)).setText(result.company);
-                        ((TextView)getView().findViewById(R.id.email)).setText(result.email);
-                    });
+                    userSubscription = user.subscribe(result -> processUser(result));
                     user.flatMap(result -> GitService.repos(result.login)).subscribe(result -> processRepos(result));
                     user.flatMap(result -> GitService.bitmapImage(result.avatar_url)).subscribe(result -> processImage(result));
-
                 }
                 break;
         }
+    }
+
+    private void processUser(User result) {
+        ((TextView)getView().findViewById(R.id.name)).setText(result.name);
+        ((TextView)getView().findViewById(R.id.company)).setText(result.company);
+        ((TextView)getView().findViewById(R.id.email)).setText(result.email);
     }
 
     private void processImage(Bitmap result) {
@@ -85,5 +88,9 @@ public class NetworkFragment extends Fragment implements View.OnClickListener {
     private void processRepos(Repo[] result) {
         ArrayAdapter<Repo> adapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1, result);
         repoList.setAdapter(adapter);
+    }
+
+    private boolean isSubscribed() {
+        return userSubscription != null && userSubscription.isUnsubscribed();
     }
 }
